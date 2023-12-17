@@ -49,7 +49,7 @@ def on_message(mqtt_client, userdata, msg):
             'message': json.dumps({
                 'type': 'captured',
                 "id": history.id,
-                "captured_at": str(history.captured_at),
+                "captured_at": str(history.captured_at.astimezone().strftime('%c')),
                 "image_url": settings.MEDIA_URL + str(history.image)
             })
         })
@@ -70,7 +70,7 @@ client.loop_start()
 def home(request):
     histories = [{
         'id': history.id,
-        'captured_at': history.captured_at,
+        'captured_at': str(history.captured_at.strftime('%c')),
         'image_url': settings.MEDIA_URL + str(history.image)
     } for history in CameraHistory.objects.all().order_by('-id')[:10]]
 

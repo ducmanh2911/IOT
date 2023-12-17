@@ -17,3 +17,5 @@
 # chạy server
 - đổi ip server tương ứng với ip wifi
 - `python manager runserver <ip>:<port>`
+#1. env/Scripts/activate
+#2. py .\manage.py runserver 192.168.43.111:1020
