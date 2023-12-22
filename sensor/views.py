@@ -12,6 +12,7 @@ import json
 from paho.mqtt import client as mqtt_client
 from PIL import Image
 from io import BytesIO
+from django.core.paginator import Paginator
 
 # Create your views here.
 
@@ -77,6 +78,15 @@ def home(request):
     return render(request, 'home.html', {
         'histories': histories
     })
+    
+def get_all_histories(request): 
+    histories = [{
+        'id': history.id,
+        'captured_at': str(history.captured_at.strftime('%c')),
+        'image_url': settings.MEDIA_URL + str(history.image)
+    } for history in CameraHistory.objects.all().order_by('-id')]
+    
+    return HttpResponse(json.dumps(histories), status=200, content_type='application/json')
 
 @csrf_exempt
 def action(request):
