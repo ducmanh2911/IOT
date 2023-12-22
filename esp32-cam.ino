@@ -28,15 +28,15 @@
 #define status_topic "status"
 #define action_topic "action"
 #define captured_topic "captured"
-#define log_topic "log"
+#define sensor_topic "sensor"
 
 /* ======================================== */
 
 /* ======================================== Variables for network. */
 // REPLACE WITH YOUR NETWORK CREDENTIALS
-const char* ssid = "Wifi name"; //--> Enter your SSID / your WiFi network name.
-const char* password = "********"; //--> Enter your WiFi password.
-const char* mqttServer = "192.168.98.103";
+const char* ssid = "esp32-cam"; //--> Enter your SSID / your WiFi network name.
+const char* password = "12121212"; //--> Enter your WiFi password.
+const char* mqttServer = "192.168.43.111";
 const int mqttPort = 1883;
 
 WiFiClient wifiClient;
@@ -70,6 +70,7 @@ PubSubClient client(wifiClient);
 
 #define FLASH_LED_PIN   4           //--> LED Flash PIN (GPIO 4)
 #define PIR_SENSOR_PIN  13          //--> PIR SENSOR PIN (GPIO 13)
+#define ALERT_PIN 15
 
 #define EEPROM_SIZE     2           //--> Define the number of bytes you want to access
 
@@ -147,7 +148,6 @@ void configInitCamera(){
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;
   config.pixel_format = PIXFORMAT_JPEG;
-
   /* ---------------------------------------- init with high specs to pre-allocate larger buffers. */
   if(psramFound()){
     config.frame_size = FRAMESIZE_UXGA; //--> FRAMESIZE_ + UXGA|SXGA|XGA|SVGA|VGA|CIF|QVGA|HQVGA|QQVGA
@@ -248,6 +248,10 @@ void callback(char* topic, byte* payload, unsigned int length) {
   if(strcmp(topic, action_topic) == 0){
     if(payload[0] == '1') disableCam = !disableCam;
     client.publish(status_topic, disableCam ? "0" : "1");
+  }else if(strcmp(topic, sensor_topic) == 0){
+    if(!disableCam){
+      sendPhoto();
+    }
   }
 }
 
@@ -258,6 +262,8 @@ void setup(){
    /* ---------------------------------------- Init serial communication speed (baud rate). */
   Serial.begin(115200);
   delay(1000);
+  pinMode(PIR_SENSOR_PIN, INPUT);
+  pinMode(ALERT_PIN, OUTPUT);
 
   /* ---------------------------------------- Starts the EEPROM, writes and reads the settings stored in the EEPROM. */
   EEPROM.begin(EEPROM_SIZE);
@@ -325,9 +331,10 @@ void reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
     // Attempt to connect
-    if (client.connect("ESp32")) {
+    if (client.connect("Esp32")) {
       Serial.println("connected");
       // Subscribe
+      client.subscribe(sensor_topic);
       client.subscribe(action_topic);
     } else {
       delay(2000);
@@ -335,30 +342,11 @@ void reconnect() {
   }
 }
 
-unsigned long pre = millis();
 void loop() {
   if (!client.connected()) {
     reconnect();
   }
   client.loop();
-  if(PIR_Sensor_is_stable == false) {
-    if(millis() > lastTime_countdown_Ran + countdown_interval_to_stabilize_PIR_Sensor) {
-      if(countdown_to_stabilize_PIR_Sensor > 0) countdown_to_stabilize_PIR_Sensor--;
-      if(countdown_to_stabilize_PIR_Sensor == 0) {
-        PIR_Sensor_is_stable = true;
-      }
-      lastTime_countdown_Ran = millis();
-    }
-  }
-  
-  if(capture_Photo_with_PIR_state() == ON) {
-    if(!disableCam && PIR_State() && PIR_Sensor_is_stable) {
-      sendPhoto();
-      delay(500);
-    }
-  }
-
-  /* ---------------------------------------- */
 }
 /* ________________________________________________________________________________ */
 //<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
